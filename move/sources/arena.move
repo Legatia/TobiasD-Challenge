@@ -1,7 +1,11 @@
 module challenge::arena;
 
-use challenge::hero::Hero;
+use challenge::hero::{Self, Hero};
 use sui::event;
+use sui::transfer::public_transfer;
+use sui::object;
+use sui::tx_context::TxContext;
+use sui::object::UID;
 
 // ========= STRUCTS =========
 
@@ -27,7 +31,22 @@ public struct ArenaCompleted has copy, drop {
 // ========= FUNCTIONS =========
 
 public fun create_arena(hero: Hero, ctx: &mut TxContext) {
-
+    let arena_id = object::new(ctx);
+    let arena = Arena {
+        id: arena_id,
+        warrior: hero,
+        owner: ctx.sender(),
+    };
+    
+    // IMPORTANT: Extract the ID before transferring ownership
+    let arena_id = object::id(&arena);
+    
+    // Emit ArenaCreated event
+    event::emit(ArenaCreated {
+        arena_id,
+        timestamp: ctx.epoch_timestamp_ms(),
+    });
+    transfer::share_object(arena);
     // TODO: Create an arena object
         // Hints:
         // Use object::new(ctx) for unique ID
@@ -38,18 +57,42 @@ public fun create_arena(hero: Hero, ctx: &mut TxContext) {
 }
 
 #[allow(lint(self_transfer))]
-public fun battle(hero: Hero, arena: Arena, ctx: &mut TxContext) {
+public fun battle(mut hero: Hero, mut arena: Arena, ctx: &mut TxContext) {
+    // Calculate hero powers BEFORE consuming the values
+    let hero_power = hero.hero_power();
+    let arena_warrior_power = arena.warrior.hero_power();
     
-    // TODO: Implement battle logic
-        // Hints:
-        // Destructure arena to get id, warrior, and owner
-    // TODO: Compare hero.hero_power() with warrior.hero_power()
-        // Hints: 
-        // If hero wins: both heroes go to ctx.sender()
-        // If warrior wins: both heroes go to battle place owner
-    // TODO:  Emit ArenaCompleted event with winner/loser IDs (Don't forget to use object::id(&warrior) or object::id(&hero) ). 
-        // Hints:  
-        // You have to emit this inside of the if else statements
-    // TODO: Delete the battle place ID 
+    // Get IDs BEFORE transferring (moving) the objects
+    let hero_id = object::id(&hero);
+    let warrior_id = object::id(&arena.warrior);
+    
+    // Destructure arena to get id, warrior, and owner
+    let Arena { id, mut warrior, owner } = arena;
+    
+    // Battle logic: compare powers and transfer heroes
+    if (hero_power > arena_warrior_power) {
+        // Hero wins: award XP to hero and transfer both heroes to challenger
+        hero::award_xp(&mut hero, 100);
+        transfer::public_transfer(warrior, ctx.sender());
+        transfer::public_transfer(hero, ctx.sender());
+        event::emit(ArenaCompleted {
+            winner_hero_id: hero_id,
+            loser_hero_id: warrior_id,
+            timestamp: ctx.epoch_timestamp_ms(),
+        });
+    } else {
+        // Warrior wins: award XP to warrior and transfer both heroes to arena owner
+        hero::award_xp(&mut warrior, 100);
+        transfer::public_transfer(hero, owner);
+        transfer::public_transfer(warrior, owner);
+        event::emit(ArenaCompleted {
+            winner_hero_id: warrior_id,
+            loser_hero_id: hero_id,
+            timestamp: ctx.epoch_timestamp_ms(),
+        });
+    };
+    
+    // Delete the arena ID since the arena is consumed
+    object::delete(id);
 }
 

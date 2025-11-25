@@ -216,9 +216,14 @@ export default function Arenas({ refreshKey, setRefreshKey }: RefreshProps) {
                         ⚔️ Battle Ready
                       </Badge>
                     </Flex>
-                    <Badge color="blue" size="2">
-                      Power: {warriorFields.power}
-                    </Badge>
+                    <Flex gap="2" wrap="wrap">
+                      <Badge color="purple" size="2">
+                        Level {warriorFields.level}
+                      </Badge>
+                      <Badge color="blue" size="2">
+                        Power: {warriorFields.power}
+                      </Badge>
+                    </Flex>
 
                     <Text size="3" color="gray">
                       Owner: {fields.owner.slice(0, 6)}...
@@ -242,7 +247,7 @@ export default function Arenas({ refreshKey, setRefreshKey }: RefreshProps) {
                         return (
                           <Flex key={heroId} align="center" gap="2">
                             <Text size="2" style={{ flex: 1 }}>
-                              {heroFields.name} (Power: {heroFields.power})
+                              {heroFields.name} (Lv.{heroFields.level}, Power: {heroFields.power})
                             </Text>
                             <Button
                               onClick={() => handleBattle(arenaId, heroId)}

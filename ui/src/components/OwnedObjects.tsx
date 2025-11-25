@@ -21,6 +21,7 @@ import { Hero } from "../types/hero";
 import { transferHero } from "../utility/helpers/transfer_hero";
 import { listHero } from "../utility/marketplace/list_hero";
 import { createArena } from "../utility/arena/create_arena";
+import { levelUpHero } from "../utility/heroes/level_up_hero";
 import { RefreshProps } from "../types/props";
 
 export function OwnedObjects({ refreshKey, setRefreshKey }: RefreshProps) {
@@ -36,6 +37,9 @@ export function OwnedObjects({ refreshKey, setRefreshKey }: RefreshProps) {
   }>({});
   const [isListing, setIsListing] = useState<{ [key: string]: boolean }>({});
   const [isCreatingBattle, setIsCreatingBattle] = useState<{
+    [key: string]: boolean;
+  }>({});
+  const [isLevelingUp, setIsLevelingUp] = useState<{
     [key: string]: boolean;
   }>({});
   const [copiedStates, setCopiedStates] = useState<{ [key: string]: boolean }>(
@@ -157,6 +161,34 @@ export function OwnedObjects({ refreshKey, setRefreshKey }: RefreshProps) {
     );
   };
 
+  const handleLevelUp = (heroId: string) => {
+    if (!packageId) return;
+
+    setIsLevelingUp((prev) => ({ ...prev, [heroId]: true }));
+
+    const tx = levelUpHero(packageId, heroId);
+    signAndExecute(
+      { transaction: tx },
+      {
+        onSuccess: async ({ digest }) => {
+          await suiClient.waitForTransaction({
+            digest,
+            options: {
+              showEffects: true,
+              showObjectChanges: true,
+            },
+          });
+
+          setRefreshKey(refreshKey + 1);
+          setIsLevelingUp((prev) => ({ ...prev, [heroId]: false }));
+        },
+        onError: () => {
+          setIsLevelingUp((prev) => ({ ...prev, [heroId]: false }));
+        },
+      },
+    );
+  };
+
   if (!account) {
     return (
       <Card>
@@ -220,9 +252,38 @@ export function OwnedObjects({ refreshKey, setRefreshKey }: RefreshProps) {
                     <Text size="5" weight="bold">
                       {fields.name}
                     </Text>
-                    <Badge color="blue" size="2">
-                      Power: {fields.power}
-                    </Badge>
+                    <Flex gap="2" wrap="wrap">
+                      <Badge color="purple" size="2">
+                        Level {fields.level}
+                      </Badge>
+                      <Badge color="blue" size="2">
+                        Power: {fields.power}
+                      </Badge>
+                    </Flex>
+                    {/* XP Progress Bar */}
+                    <Flex direction="column" gap="1">
+                      <Text size="1" color="gray">
+                        XP: {fields.xp} / 100 ({Math.floor((Number(fields.xp) % 100))}%)
+                      </Text>
+                      <div
+                        style={{
+                          width: "100%",
+                          height: "6px",
+                          backgroundColor: "#e0e0e0",
+                          borderRadius: "3px",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: `${(Number(fields.xp) % 100)}%`,
+                            height: "100%",
+                            backgroundColor: "#7c3aed",
+                            transition: "width 0.3s ease",
+                          }}
+                        />
+                      </div>
+                    </Flex>
 
                     <Flex align="center" gap="2">
                       <Text
@@ -251,6 +312,7 @@ export function OwnedObjects({ refreshKey, setRefreshKey }: RefreshProps) {
                       <Tabs.Trigger value="transfer">Transfer</Tabs.Trigger>
                       <Tabs.Trigger value="list">List for Sale</Tabs.Trigger>
                       <Tabs.Trigger value="battle">Battle</Tabs.Trigger>
+                      <Tabs.Trigger value="levelup">Level Up</Tabs.Trigger>
                     </Tabs.List>
 
                     <Tabs.Content value="transfer">
@@ -324,6 +386,35 @@ export function OwnedObjects({ refreshKey, setRefreshKey }: RefreshProps) {
                           {isCreatingBattle[heroId]
                             ? "Creating Arena..."
                             : "Create Arena"}
+                        </Button>
+                      </Flex>
+                    </Tabs.Content>
+
+                    <Tabs.Content value="levelup">
+                      <Flex direction="column" gap="2" mt="3">
+                        <Text size="2" weight="bold">
+                          Level {fields.level} → Level {Number(fields.level) + 1}
+                        </Text>
+                        <Text size="2" color="gray">
+                          Current XP: {fields.xp}
+                        </Text>
+                        <Text size="2" color="gray">
+                          Required: 100 XP
+                        </Text>
+                        <Text size="2" color="gray">
+                          Reward: +10 Power ({fields.power} → {Number(fields.power) + 10})
+                        </Text>
+                        <Button
+                          onClick={() => handleLevelUp(heroId)}
+                          disabled={Number(fields.xp) < 100 || isLevelingUp[heroId]}
+                          loading={isLevelingUp[heroId]}
+                          color="purple"
+                        >
+                          {isLevelingUp[heroId]
+                            ? "Leveling Up..."
+                            : Number(fields.xp) < 100
+                              ? `Need ${100 - Number(fields.xp)} more XP`
+                              : "Level Up!"}
                         </Button>
                       </Flex>
                     </Tabs.Content>
