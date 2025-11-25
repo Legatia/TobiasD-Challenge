@@ -9,7 +9,7 @@ use challenge::marketplace::{Self, ListHero, AdminCap, EInvalidPayment, HeroList
 use sui::coin;
 use sui::sui::SUI;
 use sui::test_scenario::{Self as ts, next_tx};
-use sui::test_utils::destroy;
+use std::unit_test::destroy;
 
 // Error codes for assertions
 const EHeroNameMismatch: u64 = 1;

@@ -2,10 +2,8 @@ module challenge::arena;
 
 use challenge::hero::{Self, Hero};
 use sui::event;
-use sui::transfer::public_transfer;
-use sui::object;
-use sui::tx_context::TxContext;
-use sui::object::UID;
+
+// ========= STRUCTS =========
 
 // ========= STRUCTS =========
 
@@ -57,7 +55,7 @@ public fun create_arena(hero: Hero, ctx: &mut TxContext) {
 }
 
 #[allow(lint(self_transfer))]
-public fun battle(mut hero: Hero, mut arena: Arena, ctx: &mut TxContext) {
+public fun battle(mut hero: Hero, arena: Arena, ctx: &mut TxContext) {
     // Calculate hero powers BEFORE consuming the values
     let hero_power = hero.hero_power();
     let arena_warrior_power = arena.warrior.hero_power();
@@ -72,7 +70,7 @@ public fun battle(mut hero: Hero, mut arena: Arena, ctx: &mut TxContext) {
     // Battle logic: compare powers and transfer heroes
     if (hero_power > arena_warrior_power) {
         // Hero wins: award XP to hero and transfer both heroes to challenger
-        hero::award_xp(&mut hero, 100);
+        hero::award_battle_xp(&mut hero);
         transfer::public_transfer(warrior, ctx.sender());
         transfer::public_transfer(hero, ctx.sender());
         event::emit(ArenaCompleted {
@@ -82,7 +80,7 @@ public fun battle(mut hero: Hero, mut arena: Arena, ctx: &mut TxContext) {
         });
     } else {
         // Warrior wins: award XP to warrior and transfer both heroes to arena owner
-        hero::award_xp(&mut warrior, 100);
+        hero::award_battle_xp(&mut warrior);
         transfer::public_transfer(hero, owner);
         transfer::public_transfer(warrior, owner);
         event::emit(ArenaCompleted {

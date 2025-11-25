@@ -1,10 +1,8 @@
 module challenge::hero;
 
 use std::string::String;
-use sui::transfer;
-use sui::object;
-use sui::tx_context::TxContext;
-use sui::object::UID; 
+
+// ========= STRUCTS ========= 
 
 // ========= STRUCTS =========
 public struct Hero has key, store {
@@ -67,6 +65,11 @@ public fun create_hero(name: String, image_url: String, power: u64, ctx: &mut Tx
 /// Award XP to a hero (called by arena module after battle)
 public(package) fun award_xp(hero: &mut Hero, xp_amount: u64) {
     hero.xp = hero.xp + xp_amount;
+}
+
+/// Award standard battle XP to a hero (uses constant)
+public(package) fun award_battle_xp(hero: &mut Hero) {
+    award_xp(hero, XP_REWARD_PER_BATTLE);
 }
 
 /// Level up a hero when they have enough XP
